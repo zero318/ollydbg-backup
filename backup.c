@@ -30,8 +30,14 @@ struct csv_data {
     int comments;
     int index;
     char address[9];
-    char label[256];
-    char comment[256];
+    union {
+        char label[256];
+        char type[256];
+    };
+    union {
+        char comment[256];
+        char name[256];
+    };
     rva_t *rvas;
 };
 
@@ -116,55 +122,4 @@ rva_t *backup_load(const char *filename, char *message)
 
     sprintf(message, "Loaded %d labels and %d comments from %s", data.labels, data.comments, filename);
     return data.rvas;
-}
-
-bool backup_save(const char *filename, rva_t *rvas, char *message)
-{
-    FILE *fh = fopen(filename, "wb");
-
-    if (!fh) {
-        sprintf(message, "File %s could not be opened for writing", filename);
-        return false;
-    }
-
-    if (!rvas) {
-        strcpy(message, "Nothing to save");
-        return false;
-    }
-
-    fprintf(fh, "RVA,label,comment\r\n");
-
-    int labels = 0;
-    int comments = 0;
-
-    LIST_FOREACH (rvas, rva_t, rva) {
-        if (rva->label[0]) {
-            labels++;
-        }
-
-        if (rva->comment[0]) {
-            comments++;
-        }
-
-        fprintf(fh, "%08X,", rva->address);
-
-        if (strchr(rva->label, ',') || strchr(rva->label, '"'))
-            csv_fwrite(fh, rva->label, strlen(rva->label));
-        else
-            fwrite(rva->label, strlen(rva->label), 1, fh);
-
-        fwrite(",", 1, 1, fh);
-
-        if (strchr(rva->comment, ',') || strchr(rva->comment, '"'))
-            csv_fwrite(fh, rva->comment, strlen(rva->comment));
-        else
-            fwrite(rva->comment, strlen(rva->comment), 1, fh);
-
-        fwrite("\r\n", 2, 1, fh);
-    }
-
-    fclose(fh);
-
-    sprintf(message, "Saved %d labels and %d comments to %s", labels, comments, filename);
-    return true;
 }
